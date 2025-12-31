@@ -5,6 +5,19 @@
     @touchstart.prevent="handleClick"
     :class="{ 'bouncing': isBouncing }"
   >
+    <!-- SVG Filter to remove white background -->
+    <svg style="position: absolute; width: 0; height: 0;">
+      <defs>
+        <filter id="remove-white" color-interpolation-filters="sRGB">
+          <feColorMatrix type="matrix"
+            values="1 0 0 0 0
+                    0 1 0 0 0
+                    0 0 1 0 0
+                    -1 -1 -1 2 0" />
+        </filter>
+      </defs>
+    </svg>
+    
     <img 
       src="/images/wooden-fish.png" 
       alt="Wooden Fish"
@@ -55,12 +68,13 @@ const handleClick = () => {
   width: 300px;
   height: 300px;
   object-fit: contain;
-  filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.3));
   transition: filter 0.3s ease;
+  /* Apply SVG filter to remove white background */
+  filter: url(#remove-white) drop-shadow(0 10px 30px rgba(0, 0, 0, 0.3));
 }
 
 .wooden-fish-container:hover .wooden-fish-image {
-  filter: drop-shadow(0 15px 40px rgba(244, 196, 48, 0.5));
+  filter: url(#remove-white) drop-shadow(0 15px 40px rgba(244, 196, 48, 0.5));
 }
 
 .bouncing .wooden-fish-image {
