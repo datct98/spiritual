@@ -1,0 +1,195 @@
+:root {
+  /* Spiritual Color Palette */
+  --gold-light: #ffd966;
+  --gold: #f4c430;
+  --gold-dark: #d4a520;
+  --purple-light: #e6d9ff;
+  --purple: #b19cd9;
+  --purple-dark: #8b7ab8;
+  --pink: #ffd4e9;
+  --white: #ffffff;
+  --white-transparent: rgba(255, 255, 255, 0.9);
+  --shadow: rgba(0, 0, 0, 0.1);
+  --shadow-strong: rgba(0, 0, 0, 0.2);
+  
+  /* Combo Colors */
+  --combo-normal: #ffffff;
+  --combo-blue: #4fc3f7;
+  --combo-purple: #ba68c8;
+  --combo-gold: #ffd700;
+  
+  /* Spacing */
+  --spacing-xs: 0.5rem;
+  --spacing-sm: 1rem;
+  --spacing-md: 1.5rem;
+  --spacing-lg: 2rem;
+  --spacing-xl: 3rem;
+  
+  /* Typography */
+  font-family: 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: linear-gradient(180deg, var(--gold-light) 0%, var(--purple-light) 50%, var(--pink) 100%);
+  overflow-x: hidden;
+}
+
+#app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-md);
+  position: relative;
+}
+
+/* Background Image */
+.app-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url('/images/background.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  z-index: -1;
+  opacity: 0.7;
+}
+
+/* Animations */
+@keyframes bounce {
+  0% { transform: scale(1); }
+  30% { transform: scale(0.9); }
+  50% { transform: scale(1.1); }
+  70% { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+@keyframes floatUp {
+  0% {
+    transform: translateY(0) translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-120px) translateX(var(--float-x, 0));
+    opacity: 0;
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-10px); }
+  20%, 40%, 60%, 80% { transform: translateX(10px); }
+}
+
+@keyframes glow {
+  0%, 100% { 
+    filter: drop-shadow(0 0 10px currentColor);
+  }
+  50% { 
+    filter: drop-shadow(0 0 20px currentColor);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { 
+    transform: scale(1);
+  }
+  50% { 
+    transform: scale(1.05);
+  }
+}
+
+@keyframes fire {
+  0%, 100% {
+    text-shadow: 
+      0 0 10px var(--combo-gold),
+      0 0 20px var(--combo-gold),
+      0 0 30px var(--combo-gold);
+  }
+  50% {
+    text-shadow: 
+      0 0 20px var(--combo-gold),
+      0 0 30px var(--combo-gold),
+      0 0 40px var(--combo-gold),
+      0 0 50px #ff6b00;
+  }
+}
+
+/* Utility Classes */
+.bounce {
+  animation: bounce 0.4s cubic-bezier(0.36, 0, 0.66, -0.56);
+}
+
+.shake {
+  animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+.glow {
+  animation: glow 1s ease-in-out infinite;
+}
+
+/* Card Styling */
+.card {
+  background: var(--white-transparent);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: var(--spacing-md);
+  box-shadow: 0 8px 32px var(--shadow);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Button Styling */
+.button {
+  background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+  color: white;
+  border: none;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px var(--shadow);
+}
+
+.button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px var(--shadow-strong);
+}
+
+.button:active {
+  transform: translateY(0);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  :root {
+    font-size: 14px;
+  }
+  
+  #app {
+    padding: var(--spacing-sm);
+  }
+}
+
+/* Selection */
+::selection {
+  background: var(--gold);
+  color: white;
+}
