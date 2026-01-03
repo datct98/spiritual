@@ -1,44 +1,64 @@
 <template>
-  <div class="app-background"></div>
-  
-  <div class="app-container" :class="{ shake: isShaking }">
-    <header class="header">
-      <h1 class="title">🪷 GÕ MÕ TÂM LINH 🪷</h1>
-      <p class="subtitle">Tu tâm dưỡng tính - Tích công lũy đức</p>
-    </header>
+  <!-- Show AuthPage if not authenticated -->
+  <AuthPage v-if="!isAuthenticated" />
 
-    <ComboStreak 
-      :combo="comboCount" 
-      :level="comboLevel" 
-      :color="comboColor"
-    />
+  <!-- Show main app if authenticated -->
+  <div v-else>
+    <div class="app-background"></div>
+    
+    <div class="app-container" :class="{ shake: isShaking }">
+      <header class="header">
+        <h1 class="title">🪷 GÕ MÕ TÂM LINH 🪷</h1>
+        <p class="subtitle">Tu tâm dưỡng tính - Tích công lũy đức</p>
+        
+        <!-- User info and logout -->
+        <div class="user-bar">
+          <span class="user-email">{{ getUserEmail() }}</span>
+          <button @click="handleLogout" class="logout-btn">
+            Đăng xuất 🚪
+          </button>
+        </div>
+      </header>
 
-    <main class="main-content">
-      <WoodenFish @click="handleWoodenFishClick" />
-      
-      <StatsDisplay :stats="stats" :level="level" />
-    </main>
-
-    <footer class="footer">
-      <p>Made with 💖 for Gen Z spiritual seekers</p>
-    </footer>
-
-    <!-- Floating texts container -->
-    <div class="floating-texts-container">
-      <FloatingText
-        v-for="text in floatingTexts"
-        :key="text.id"
-        :text="text.text"
-        :x="text.x"
-        :y="text.y"
-        :is-meme="text.isMeme"
+      <ComboStreak 
+        :combo="comboCount" 
+        :level="comboLevel" 
+        :color="comboColor"
       />
+
+      <main class="main-content">
+        <WoodenFish @click="handleWoodenFishClick" />
+        
+        <StatsDisplay :stats="stats" :level="level" />
+        
+        <!-- Rate limit message -->
+        <div v-if="rateLimitMessage" class="rate-limit-toast">
+          {{ rateLimitMessage }}
+        </div>
+      </main>
+
+      <footer class="footer">
+        <p>Made with 💖 for Gen Z spiritual seekers</p>
+      </footer>
+
+      <!-- Floating texts container -->
+      <div class="floating-texts-container">
+        <FloatingText
+          v-for="text in floatingTexts"
+          :key="text.id"
+          :text="text.text"
+          :x="text.x"
+          :y="text.y"
+          :is-meme="text.isMeme"
+        />
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed } from 'vue'
+import AuthPage from './components/AuthPage.vue'
 import WoodenFish from './components/WoodenFish.vue'
 import FloatingText from './components/FloatingText.vue'
 import ComboStreak from './components/ComboStreak.vue'
@@ -46,9 +66,11 @@ import StatsDisplay from './components/StatsDisplay.vue'
 import { useGameStats } from './composables/useGameStats'
 import { useCombo } from './composables/useCombo'
 import { useSoundManager } from './composables/useSoundManager'
+import { useAuth } from './composables/useAuth'
 
 // Composables
-const { stats, incrementMerit, incrementPeace, incrementKarma, level } = useGameStats()
+const { isAuthenticated, getUserEmail, logout } = useAuth()
+const { stats, incrementMerit, incrementPeace, incrementKarma, level, rateLimitMessage } = useGameStats()
 const { comboCount, comboLevel, comboColor, increment: incrementCombo } = useCombo()
 const { playWoodenFish, playGong } = useSoundManager()
 
@@ -74,30 +96,44 @@ const regularTexts = [
   'Nghiệp -1'
 ]
 
+// Handle logout with confirmation
+const handleLogout = () => {
+  if (confirm('Bạn chắc chắn muốn đăng xuất?')) {
+    logout()
+  }
+}
+
 const handleWoodenFishClick = async () => {
-  // Play sound
+  // Play sound immediately
   playWoodenFish()
   
-  // Increment stats
-  incrementMerit()
-  incrementPeace()
-  incrementKarma()
+  // Create floating text immediately for instant feedback
+  createFloatingText()
   
-  // Increment combo
+  // Increment combo immediately
   const comboResult = incrementCombo()
   
-  // Check for milestone (every 1000 points)
-  if (stats.value.merit % 1000 === 0 && stats.value.merit > 0) {
-    playGong()
+  // Try to increment stats via API
+  try {
+    await incrementMerit()
+    incrementPeace()
+    incrementKarma()
+    
+    // Check for milestone (every 1000 points)
+    if (stats.value.merit % 1000 === 0 && stats.value.merit > 0) {
+      playGong()
+    }
+    
+    // Check for combo milestone (screen shake at 100, 200, etc.)
+    if (comboResult.isMilestone) {
+      triggerScreenShake()
+    }
+  } catch (error) {
+    // API error - rate limit or network issue
+    // Error message is shown via rateLimitMessage
+    // But still show visual feedback (floating text, combo, sound already played)
+    console.error('Merit API error:', error)
   }
-  
-  // Check for combo milestone (screen shake at 100, 200, etc.)
-  if (comboResult.isMilestone) {
-    triggerScreenShake()
-  }
-  
-  // Create floating text
-  createFloatingText()
 }
 
 const createFloatingText = () => {
@@ -204,6 +240,79 @@ const triggerScreenShake = () => {
   pointer-events: none;
   z-index: 9999;
 }
+
+/* User bar */
+.user-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding: 0.8rem 1.2rem;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.user-email {
+  color: var(--gold-dark);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.logout-btn {
+  padding: 0.5rem 1rem;
+  background: rgba(255, 59, 48, 0.2);
+  border: 1px solid rgba(255, 59, 48, 0.4);
+  border-radius: 12px;
+  color: #ff6b6b;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.logout-btn:hover {
+  background: rgba(255, 59, 48, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 59, 48, 0.3);
+}
+
+.logout-btn:active {
+  transform: translateY(0);
+}
+
+/* Rate limit toast */
+.rate-limit-toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 1rem 1.5rem;
+  background: rgba(255, 152, 0, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  color: white;
+  font-weight: 600;
+  font-size: 1rem;
+  box-shadow: 0 8px 24px rgba(255, 152, 0, 0.4);
+  animation: slideDown 0.3s ease, pulse 0.5s ease 0.3s infinite alternate;
+  z-index: 10000;
+  text-align: center;
+  max-width: 90%;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateX(-50%) translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+}
+
 
 @media (max-width: 768px) {
   .title {
