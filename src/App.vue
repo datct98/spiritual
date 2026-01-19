@@ -1,175 +1,194 @@
 <template>
-  <!-- Show AuthPage if not authenticated -->
   <AuthPage v-if="!isAuthenticated" />
 
-  <!-- Show main app if authenticated -->
-  <div v-else>
-    <div class="app-background"></div>
+  <div v-else class="healing-sanctuary">
+    <!-- PASTEL GRADIENT BACKGROUND -->
+    <div class="bg-gradient"></div>
     
-    <div class="app-container" :class="{ shake: isShaking }">
-      <header class="header">
-        <h1 class="title">🪷 GÕ MÕ TÂM LINH 🪷</h1>
-        <p class="subtitle">Tu tâm dưỡng tính - Tích công lũy đức</p>
-        
-        <!-- User info and logout -->
-        <div class="user-bar">
-          <span class="user-email">{{ getUserEmail() }}</span>
-          <button @click="handleLogout" class="logout-btn">
-            Đăng xuất 🚪
-          </button>
-        </div>
+    <!-- FLOATING ORBS -->
+    <div class="floating-orbs">
+      <div class="orb orb-1"></div>
+      <div class="orb orb-2"></div>
+      <div class="orb orb-3"></div>
+    </div>
+
+    <!-- RIPPLE EFFECTS LAYER -->
+    <div class="ripple-container" ref="rippleContainer"></div>
+
+    <!-- CONTENT WRAPPER -->
+    <div class="content-wrapper">
+      <!-- HEADER (Minimal) -->
+      <header class="sanctuary-header">
+        <button @click="$router.push('/home')" class="back-btn">
+          <span>←</span> Quay lại trang chủ
+        </button>
+        <span class="user-email">{{ getUserEmail() }}</span>
       </header>
 
-      <ComboStreak 
-        :combo="comboCount" 
-        :level="comboLevel" 
-        :color="comboColor"
-      />
-
-      <main class="main-content">
-        <WoodenFish @click="handleWoodenFishClick" />
-        
-        <StatsDisplay :stats="stats" :level="level" />
-        
-        <!-- Rate limit message -->
-        <div v-if="rateLimitMessage" class="rate-limit-toast">
-          {{ rateLimitMessage }}
+      <!-- MAIN STAGE -->
+      <main class="main-stage">
+        <!-- WOODEN FISH CENTER -->
+        <div class="fish-container">
+          <WoodenFish @click="handleTap" />
+          <p class="tap-hint">Tap for Peace</p>
         </div>
       </main>
 
-      <footer class="footer">
-        <p>Made with 💖 for Gen Z spiritual seekers</p>
+      <!-- STATS CARDS (Floating) -->
+      <footer class="stats-footer">
+        <div class="stat-card">
+          <div class="stat-icon">🌟</div>
+          <div class="stat-label">Merit</div>
+          <div class="stat-value">{{ stats.merit }}</div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-icon">☮️</div>
+          <div class="stat-label">Peace</div>
+          <div class="stat-value">{{ stats.peace }}</div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-icon">⚖️</div>
+          <div class="stat-label">Karma</div>
+          <div class="stat-value">{{ stats.karma }}</div>
+        </div>
       </footer>
-
-      <!-- Floating texts container -->
-      <div class="floating-texts-container">
-        <FloatingText
-          v-for="text in floatingTexts"
-          :key="text.id"
-          :text="text.text"
-          :x="text.x"
-          :y="text.y"
-          :is-meme="text.isMeme"
-        />
-      </div>
     </div>
+
+    <!-- LEVEL PROGRESS (Top Line) -->
+    <div class="level-progress-bar">
+      <div class="level-fill" :style="{ width: levelProgress + '%' }"></div>
+    </div>
+
+    <!-- FLOATING TEXT -->
+    <div class="float-layer">
+      <FloatingText 
+        v-for="t in floatingTexts" 
+        :key="t.id" 
+        :text="t.text" 
+        :x="t.x" 
+        :y="t.y" 
+        :stat-type="t.statType"
+        :is-meme="t.isMeme" 
+      />
+    </div>
+
+    <!-- TOAST -->
+    <Transition name="fade">
+      <div v-if="rateLimitMessage" class="sanctuary-toast">
+        {{ rateLimitMessage }}
+      </div>
+    </Transition>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import AuthPage from './components/AuthPage.vue'
 import WoodenFish from './components/WoodenFish.vue'
 import FloatingText from './components/FloatingText.vue'
-import ComboStreak from './components/ComboStreak.vue'
-import StatsDisplay from './components/StatsDisplay.vue'
 import { useGameStats } from './composables/useGameStats'
-import { useCombo } from './composables/useCombo'
 import { useSoundManager } from './composables/useSoundManager'
 import { useAuth } from './composables/useAuth'
 
-// Composables
-const { isAuthenticated, getUserEmail, logout } = useAuth()
-const { stats, incrementMerit, incrementPeace, incrementKarma, level, rateLimitMessage } = useGameStats()
-const { comboCount, comboLevel, comboColor, increment: incrementCombo } = useCombo()
+const { isAuthenticated, getUserEmail } = useAuth()
+const { stats, incrementMerit, level, rateLimitMessage } = useGameStats()
 const { playWoodenFish, playGong } = useSoundManager()
 
-// State
 const floatingTexts = ref([])
-const isShaking = ref(false)
-let floatingTextId = 0
+let textId = 0
+const rippleContainer = ref(null)
 
-// Gen Z meme texts (5% chance)
-const memeTexts = [
-  'Quá keo 🔥',
-  'Slay queen 💅',
-  'Tịnh tâm nhưng vẫn cháy 🔥',
-  'Nam mô a di đà... lạt 😌',
-  'Công đức max! 🚀',
-  'Spiritual vibes ✨',
-  'Chaotic good 😇'
+// Level Calc
+const nextLevelPoints = computed(() => level.value * 100)
+const levelProgress = computed(() => ((stats.value.totalPoints % 100) / 100) * 100)
+
+const memes = [
+  'Divine ✨', 'Serenity 🌸', 'Balance ⚖️', 'Focus 🧘', 'Flow 🌊'
 ]
 
-const regularTexts = [
-  '+1 Công đức',
-  'Tâm tịnh +1',
-  'Nghiệp -1'
-]
-
-// Handle logout with confirmation
-const handleLogout = () => {
-  if (confirm('Bạn chắc chắn muốn đăng xuất?')) {
-    logout()
+const handleTap = async (event) => {
+  // Get tap coordinates
+  let x = window.innerWidth / 2
+  let y = window.innerHeight / 2
+  
+  if (event && (event.clientX || (event.touches && event.touches[0]))) {
+    x = event.clientX || event.touches[0].clientX
+    y = event.clientY || event.touches[0].clientY
   }
-}
-
-const handleWoodenFishClick = async () => {
-  // Play sound immediately
+  
+  // Create ripple effect
+  createRipple(x, y)
+  
+  // Create glow pulse
+  createGlowPulse(x, y)
+  
+  // Play sound
   playWoodenFish()
-  
-  // Create floating text immediately for instant feedback
-  createFloatingText()
-  
-  // Increment combo immediately
-  const comboResult = incrementCombo()
-  
-  // Try to increment stats via API
+
   try {
-    await incrementMerit()
-    incrementPeace()
-    incrementKarma()
+    const res = await incrementMerit()
+    // Determine what type of point was awarded
+    const statType = res.type || 'merit' // 'merit', 'peace', 'karma'
     
-    // Check for milestone (every 1000 points)
-    if (stats.value.merit % 1000 === 0 && stats.value.merit > 0) {
+    // Less spam, more meaning
+    const isMeme = Math.random() < 0.1
+    const txt = isMeme 
+      ? memes[Math.floor(Math.random() * memes.length)]
+      : (res.displayText || '+1')
+    
+    createFloatingText(txt, isMeme, statType)
+    
+    if (stats.value.totalPoints % 1000 === 0 && stats.value.totalPoints > 0) {
       playGong()
     }
-    
-    // Check for combo milestone (screen shake at 100, 200, etc.)
-    if (comboResult.isMilestone) {
-      triggerScreenShake()
-    }
-  } catch (error) {
-    // API error - rate limit or network issue
-    // Error message is shown via rateLimitMessage
-    // But still show visual feedback (floating text, combo, sound already played)
-    console.error('Merit API error:', error)
+  } catch (e) {
+    createFloatingText('+1', false, 'merit')
   }
 }
 
-const createFloatingText = () => {
-  // 5% chance for meme text
-  const isMeme = Math.random() < 0.05
-  const textArray = isMeme ? memeTexts : regularTexts
-  const text = textArray[Math.floor(Math.random() * textArray.length)]
+const createRipple = (x, y) => {
+  if (!rippleContainer.value) return
   
-  // Get position (center of screen approximately where wooden fish is)
-  const x = window.innerWidth / 2
-  const y = window.innerHeight / 2
+  // Create 3 ripples with slight delay
+  for (let i = 0; i < 3; i++) {
+    setTimeout(() => {
+      const ripple = document.createElement('div')
+      ripple.className = 'ripple-effect'
+      ripple.style.left = `${x}px`
+      ripple.style.top = `${y}px`
+      rippleContainer.value.appendChild(ripple)
+      
+      // Remove after animation
+      setTimeout(() => ripple.remove(), 1200)
+    }, i * 100)
+  }
+}
+
+const createGlowPulse = (x, y) => {
+  if (!rippleContainer.value) return
   
-  const newText = {
-    id: floatingTextId++,
+  const glow = document.createElement('div')
+  glow.className = 'glow-effect'
+  glow.style.left = `${x}px`
+  glow.style.top = `${y}px`
+  rippleContainer.value.appendChild(glow)
+  
+  // Remove after animation
+  setTimeout(() => glow.remove(), 800)
+}
+
+const createFloatingText = (text, isMeme, statType = 'merit') => {
+  floatingTexts.value.push({
+    id: textId++,
     text,
-    x,
-    y,
-    isMeme
-  }
-  
-  floatingTexts.value.push(newText)
-  
-  // Remove after animation (1.5s)
-  setTimeout(() => {
-    const index = floatingTexts.value.findIndex(t => t.id === newText.id)
-    if (index > -1) {
-      floatingTexts.value.splice(index, 1)
-    }
-  }, 1600)
-}
-
-const triggerScreenShake = () => {
-  isShaking.value = true
-  setTimeout(() => {
-    isShaking.value = false
-  }, 500)
+    x: window.innerWidth / 2,
+    y: window.innerHeight / 2 - 80,
+    isMeme,
+    statType
+  })
+  setTimeout(() => floatingTexts.value.shift(), 2500)
 }
 </script>
 
@@ -178,153 +197,307 @@ const triggerScreenShake = () => {
 </style>
 
 <style scoped>
-.app-container {
+.healing-sanctuary {
   position: relative;
-  width: 100%;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  padding: 2rem 1rem;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  font-family: var(--font-body);
+  color: var(--text-dark);
 }
 
-.header {
-  text-align: center;
-  margin-bottom: 2rem;
+/* BACKGROUND */
+.bg-gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    var(--pastel-lavender) 0%,
+    var(--pastel-peach) 50%,
+    var(--pastel-mint) 100%
+  );
+  background-size: 200% 200%;
+  animation: gentleShift 20s ease-in-out infinite;
+  z-index: 0;
 }
 
-.title {
-  font-size: 2.5rem;
-  font-weight: 900;
-  color: var(--gold-dark);
-  text-shadow: 
-    0 2px 10px rgba(255, 255, 255, 0.8),
-    0 4px 20px rgba(244, 196, 48, 0.4);
-  margin-bottom: 0.5rem;
-  font-family: 'Noto Serif', serif;
-}
-
-.subtitle {
-  font-size: 1.1rem;
-  color: var(--purple-dark);
-  font-weight: 600;
-  font-style: italic;
-}
-
-.main-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2rem;
-  width: 100%;
-  max-width: 800px;
-}
-
-.footer {
-  margin-top: 2rem;
-  text-align: center;
-  font-size: 0.9rem;
-  color: var(--purple-dark);
-  opacity: 0.8;
-}
-
-.floating-texts-container {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+/* FLOATING ORBS */
+.floating-orbs {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
   pointer-events: none;
-  z-index: 9999;
+  overflow: hidden;
 }
 
-/* User bar */
-.user-bar {
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(40px);
+  opacity: 0.4;
+  animation: floatOrb 10s ease-in-out infinite;
+}
+
+.orb-1 {
+  width: 300px;
+  height: 300px;
+  background: var(--soft-pink);
+  top: 10%;
+  left: 10%;
+  animation-delay: 0s;
+}
+
+.orb-2 {
+  width: 250px;
+  height: 250px;
+  background: var(--sky-blue);
+  top: 60%;
+  right: 15%;
+  animation-delay: 3s;
+}
+
+.orb-3 {
+  width: 200px;
+  height: 200px;
+  background: var(--gold-glow);
+  bottom: 20%;
+  left: 20%;
+  animation-delay: 6s;
+}
+
+/* RIPPLE EFFECTS */
+.ripple-container {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.ripple-effect {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--gold-glow);
+  transform: translate(-50%, -50%);
+  animation: ripple 1.2s ease-out;
+  pointer-events: none;
+}
+
+.glow-effect {
+  position: absolute;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--gold-glow), var(--soft-pink), transparent);
+  transform: translate(-50%, -50%);
+  animation: glowPulse 0.8s ease-out;
+  pointer-events: none;
+}
+
+/* CONTENT */
+.content-wrapper {
+  position: relative;
+  z-index: 5;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 2rem;
+}
+
+/* HEADER */
+.sanctuary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  opacity: 0.9;
+}
+
+.back-btn {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 12px;
+  padding: 0.7rem 1.2rem;
+  font-family: var(--font-heading);
+  font-size: 0.9rem;
+  color: var(--text-dark);
+  cursor: pointer;
+  transition: all 0.3s;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  margin-top: 1rem;
-  padding: 0.8rem 1.2rem;
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(10px);
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  gap: 0.5rem;
+}
+
+.back-btn:hover {
+  background: rgba(255, 255, 255, 0.9);
+  transform: translateY(-2px);
 }
 
 .user-email {
-  color: var(--gold-dark);
-  font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
 }
 
-.logout-btn {
-  padding: 0.5rem 1rem;
-  background: rgba(255, 59, 48, 0.2);
-  border: 1px solid rgba(255, 59, 48, 0.4);
-  border-radius: 12px;
-  color: #ff6b6b;
-  font-weight: 600;
-  cursor: pointer;
+/* MAIN STAGE */
+.main-stage {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fish-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.tap-hint {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  opacity: 0.7;
   transition: all 0.3s;
 }
 
-.logout-btn:hover {
-  background: rgba(255, 59, 48, 0.3);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(255, 59, 48, 0.3);
+.fish-container:hover .tap-hint {
+  opacity: 1;
+  color: var(--text-dark);
 }
 
-.logout-btn:active {
-  transform: translateY(0);
+/* STATS FOOTER */
+.stats-footer {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
 }
 
-/* Rate limit toast */
-.rate-limit-toast {
+.stat-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  border-radius: 20px;
+  padding: 1.5rem 2rem;
+  min-width: 140px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 10px 40px var(--shadow-soft);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 15px 50px var(--shadow-medium);
+}
+
+.stat-icon {
+  font-size: 2rem;
+}
+
+.stat-label {
+  font-family: var(--font-heading);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.stat-value {
+  font-family: var(--font-mono);
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+/* LEVEL PROGRESS */
+.level-progress-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.3);
+  z-index: 50;
+}
+
+.level-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold-glow), var(--soft-pink));
+  transition: width 0.5s ease;
+}
+
+/* FLOATING TEXT LAYER */
+.float-layer {
   position: fixed;
-  top: 20px;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+}
+
+/* TOAST */
+.sanctuary-toast {
+  position: fixed;
+  top: 100px;
   left: 50%;
   transform: translateX(-50%);
-  padding: 1rem 1.5rem;
-  background: rgba(255, 152, 0, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
+  background: rgba(255, 181, 194, 0.9);
+  border: 1px solid rgba(255, 181, 194, 0.5);
   color: white;
-  font-weight: 600;
-  font-size: 1rem;
-  box-shadow: 0 8px 24px rgba(255, 152, 0, 0.4);
-  animation: slideDown 0.3s ease, pulse 0.5s ease 0.3s infinite alternate;
-  z-index: 10000;
-  text-align: center;
-  max-width: 90%;
+  padding: 0.8rem 1.5rem;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-family: var(--font-heading);
+  backdrop-filter: blur(10px);
+  z-index: 200;
+  box-shadow: 0 4px 20px var(--shadow-soft);
 }
 
-@keyframes slideDown {
-  from {
-    transform: translateX(-50%) translateY(-100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(-50%) translateY(0);
-    opacity: 1;
-  }
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
 }
 
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
 
+/* RESPONSIVE */
 @media (max-width: 768px) {
-  .title {
-    font-size: 1.8rem;
+  .content-wrapper {
+    padding: 1rem;
   }
   
-  .subtitle {
-    font-size: 0.9rem;
+  .stats-footer {
+    gap: 1rem;
   }
   
-  .app-container {
-    padding: 1rem 0.5rem;
+  .stat-card {
+    min-width: 100px;
+    padding: 1rem 1.5rem;
+  }
+  
+  .stat-icon {
+    font-size: 1.5rem;
+  }
+  
+  .stat-value {
+    font-size: 1.4rem;
+  }
+  
+  .sanctuary-header {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-start;
   }
 }
 </style>

@@ -3,28 +3,15 @@
     class="wooden-fish-container"
     @click="handleClick"
     @touchstart.prevent="handleClick"
-    :class="{ 'bouncing': isBouncing }"
+    :class="{ 'tapping': isTapping }"
   >
-    <!-- SVG Filter to remove white background -->
-    <svg style="position: absolute; width: 0; height: 0;">
-      <defs>
-        <filter id="remove-white" color-interpolation-filters="sRGB">
-          <feColorMatrix type="matrix"
-            values="1 0 0 0 0
-                    0 1 0 0 0
-                    0 0 1 0 0
-                    -1 -1 -1 2 0" />
-        </filter>
-      </defs>
-    </svg>
-    
     <img 
-      src="/images/wooden-fish.png" 
+      src="/wooden-fish-illustrated.png" 
       alt="Wooden Fish"
       class="wooden-fish-image"
       draggable="false"
     />
-    <div class="click-hint">Gõ mõ 🙏</div>
+    <div class="soft-glow"></div>
   </div>
 </template>
 
@@ -32,17 +19,17 @@
 import { ref } from 'vue'
 
 const emit = defineEmits(['click'])
-const isBouncing = ref(false)
+const isTapping = ref(false)
 
-const handleClick = () => {
-  // Trigger bounce animation
-  isBouncing.value = true
+const handleClick = (e) => {
+  // Trigger tap animation
+  isTapping.value = true
   setTimeout(() => {
-    isBouncing.value = false
-  }, 400)
+    isTapping.value = false
+  }, 200)
   
   // Emit click event to parent
-  emit('click')
+  emit('click', e)
 }
 </script>
 
@@ -53,49 +40,68 @@ const handleClick = () => {
   user-select: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
-  transition: transform 0.1s ease;
-}
-
-.wooden-fish-container:hover {
-  transform: scale(1.05);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: breathe 4s ease-in-out infinite;
 }
 
 .wooden-fish-container:active {
-  transform: scale(0.95);
+  transform: scale(0.97);
 }
 
 .wooden-fish-image {
-  width: 300px;
-  height: 300px;
+  width: 350px;
+  height: 350px;
   object-fit: contain;
-  transition: filter 0.3s ease;
-  /* Apply SVG filter to remove white background */
-  filter: url(#remove-white) drop-shadow(0 10px 30px rgba(0, 0, 0, 0.3));
+  position: relative;
+  z-index: 2;
+  filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.1));
+  transition: all 0.3s ease;
 }
 
 .wooden-fish-container:hover .wooden-fish-image {
-  filter: url(#remove-white) drop-shadow(0 15px 40px rgba(244, 196, 48, 0.5));
+  filter: drop-shadow(0 15px 40px rgba(255, 215, 0, 0.3));
+  transform: translateY(-5px);
 }
 
-.bouncing .wooden-fish-image {
-  animation: bounce 0.4s cubic-bezier(0.36, 0, 0.66, -0.56);
-}
-
-.click-hint {
+.soft-glow {
   position: absolute;
-  bottom: -40px;
+  top: 50%;
   left: 50%;
-  transform: translateX(-50%);
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: var(--gold-dark);
-  text-shadow: 0 2px 10px rgba(255, 255, 255, 0.8);
-  opacity: 0.7;
+  transform: translate(-50%, -50%);
+  width: 250px;
+  height: 250px;
+  background: radial-gradient(circle, rgba(255, 215, 0, 0.2), transparent 70%);
+  border-radius: 50%;
   pointer-events: none;
+  z-index: 1;
+  opacity: 0.6;
+  transition: all 0.3s ease;
+}
+
+.wooden-fish-container:hover .soft-glow {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1.15);
+}
+
+.tapping .wooden-fish-image {
+  animation: tapBounce 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes tapBounce {
+  0% { transform: scale(1) translateY(0); }
+  50% { transform: scale(0.95) translateY(5px); }
+  100% { transform: scale(1) translateY(0); }
 }
 
 @media (max-width: 768px) {
   .wooden-fish-image {
+    width: 280px;
+    height: 280px;
+  }
+  
+  .soft-glow {
     width: 200px;
     height: 200px;
   }

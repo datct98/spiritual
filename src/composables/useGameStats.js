@@ -6,7 +6,7 @@ export function useGameStats() {
         merit: 0,
         peace: 0,
         karma: 0,
-        totalClicks: 0
+        totalPoints: 0
     })
 
     const isLoading = ref(false)
@@ -16,7 +16,7 @@ export function useGameStats() {
     // Khóa để tránh sync đồng thời
     let isSyncing = false
 
-    // Load merit points from localStorage first (for instant display)
+    // Load stats from localStorage first (for instant display)
     const loadLocalStats = () => {
         const saved = localStorage.getItem('spiritual-stats')
         if (saved) {
@@ -30,9 +30,9 @@ export function useGameStats() {
         }
     }
 
-    // Load merit points from API (source of truth)
+    // Load all stats from API (source of truth)
     const loadMeritPoints = async () => {
-        if (isSyncing) return // Tránh gọi API nhiều lần
+        if (isSyncing) return
 
         try {
             isSyncing = true
@@ -43,9 +43,11 @@ export function useGameStats() {
 
             console.log('✅ API response:', data)
 
-            // Update stats from backend (source of truth)
-            stats.value.merit = data.totalPoints || data
-            stats.value.totalClicks = data.totalPoints || data
+            // Update all stats from backend
+            stats.value.merit = data.merit || 0
+            stats.value.peace = data.peace || 0
+            stats.value.karma = data.karma || 0
+            stats.value.totalPoints = data.totalPoints || 0
 
             // Save to localStorage as backup
             saveLocalStats()
@@ -70,29 +72,27 @@ export function useGameStats() {
             error.value = null
             rateLimitMessage.value = null
 
-            // OPTIMISTIC UPDATE: Cộng điểm ngay lập tức ở FE
-            stats.value.merit++
-            stats.value.totalClicks++
-            saveLocalStats()
+            console.log('🔔 Tapping wooden fish...')
 
-            console.log('🔔 Tapping wooden fish... (optimistic update)')
-
-            // Gọi API ở background
+            // Gọi API - backend sẽ random 1 trong 3 loại điểm
             const result = await meritService.tap()
 
             console.log('✅ Tap API response:', result)
 
-            // Sync với backend (backend là source of truth)
-            stats.value.merit = result.totalPoints
+            // Update stats from API response
+            // result.allStats contains: { merit, peace, karma, totalPoints, level }
+            if (result.allStats) {
+                stats.value.merit = result.allStats.merit || 0
+                stats.value.peace = result.allStats.peace || 0
+                stats.value.karma = result.allStats.karma || 0
+                stats.value.totalPoints = result.allStats.totalPoints || 0
+            }
+
             saveLocalStats()
 
+            // Return result bao gồm: type, displayText, icon, newValue, allStats
             return result
         } catch (err) {
-            // Rollback optimistic update nếu API fail
-            stats.value.merit--
-            stats.value.totalClicks--
-            saveLocalStats()
-
             // Handle rate limiting
             if (err.response?.status === 429) {
                 rateLimitMessage.value = err.response.data?.error || 'Bạn gõ quá nhanh, tâm chưa tịnh! 🙏'
@@ -110,32 +110,21 @@ export function useGameStats() {
         }
     }
 
-    // Local-only increments (not synced to API)
-    const incrementPeace = () => {
-        stats.value.peace++
-        saveLocalStats()
-    }
-
-    const incrementKarma = () => {
-        stats.value.karma++
-        saveLocalStats()
-    }
-
     // Reset stats
     const resetStats = () => {
         stats.value = {
             merit: 0,
             peace: 0,
             karma: 0,
-            totalClicks: 0
+            totalPoints: 0
         }
         saveLocalStats()
     }
 
     // Computed values
     const level = computed(() => {
-        // Mỗi 100 điểm = 1 cấp
-        return Math.floor(stats.value.merit / 100) + 1
+        // Mỗi 100 điểm (totalPoints) = 1 cấp
+        return Math.floor(stats.value.totalPoints / 100) + 1
     })
 
     // Initialize on mount
@@ -153,8 +142,6 @@ export function useGameStats() {
         error,
         rateLimitMessage,
         incrementMerit,
-        incrementPeace,
-        incrementKarma,
         resetStats,
         loadMeritPoints,
         level

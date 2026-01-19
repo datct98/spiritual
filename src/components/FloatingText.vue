@@ -1,10 +1,10 @@
 <template>
-  <Transition name="float">
+  <Transition name="float-up">
     <div 
       v-if="visible"
       class="floating-text"
       :style="textStyle"
-      :class="textClass"
+      :class="[typeClass, { 'meme-text': isMeme }]"
     >
       {{ text }}
     </div>
@@ -15,26 +15,18 @@
 import { ref, onMounted, computed } from 'vue'
 
 const props = defineProps({
-  text: {
+  text: String,
+  x: Number,
+  y: Number,
+  isMeme: Boolean,
+  statType: {
     type: String,
-    required: true
-  },
-  x: {
-    type: Number,
-    default: 0
-  },
-  y: {
-    type: Number,
-    default: 0
-  },
-  isMeme: {
-    type: Boolean,
-    default: false
+    default: 'merit' // 'merit', 'peace', 'karma'
   }
 })
 
 const visible = ref(false)
-const offsetX = ref((Math.random() - 0.5) * 60) // Random horizontal offset
+const offsetX = ref((Math.random() - 0.5) * 50)
 
 const textStyle = computed(() => ({
   left: `${props.x}px`,
@@ -42,45 +34,70 @@ const textStyle = computed(() => ({
   '--float-x': `${offsetX.value}px`
 }))
 
-const textClass = computed(() => ({
-  'meme-text': props.isMeme
-}))
+const typeClass = computed(() => {
+  if (props.isMeme) return 'meme'
+  return `type-${props.statType}`
+})
 
 onMounted(() => {
   visible.value = true
-  
-  // Remove after animation completes
-  setTimeout(() => {
-    visible.value = false
-  }, 1500)
+  setTimeout(() => visible.value = false, 2500)
 })
 </script>
 
 <style scoped>
 .floating-text {
   position: fixed;
-  font-size: 1.5rem;
+  font-family: var(--font-heading);
+  font-size: 2rem;
   font-weight: 700;
-  color: var(--gold-dark);
-  text-shadow: 
-    0 2px 10px rgba(255, 255, 255, 0.9),
-    0 0 20px rgba(244, 196, 48, 0.5);
   pointer-events: none;
-  z-index: 1000;
-  transform-origin: center;
+  z-index: 150;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Stat Type Colors */
+.type-merit {
+  background: linear-gradient(to bottom, #FFD700, #FFA500);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.type-peace {
+  background: linear-gradient(to bottom, #A8DAFF, #6BB6FF);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.type-karma {
+  background: linear-gradient(to bottom, #E8D5F2, #C4A6E0);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .meme-text {
-  font-size: 2rem;
-  color: #ff6b9d;
-  text-shadow: 
-    0 2px 10px rgba(255, 255, 255, 0.9),
-    0 0 30px rgba(255, 107, 157, 0.8);
+  font-family: var(--font-body);
   font-style: italic;
-  font-weight: 900;
+  font-weight: 600;
+  background: linear-gradient(to bottom, #FFB5C2, #FF8FA3);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 15px rgba(255, 181, 194, 0.5));
 }
 
-.float-enter-active {
-  animation: floatUp 1.5s ease-out forwards;
+.float-up-enter-active {
+  animation: floatUpGentle 2.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+@media (max-width: 768px) {
+  .floating-text {
+    font-size: 1.5rem;
+  }
 }
 </style>
